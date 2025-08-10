@@ -1,15 +1,23 @@
 'use client';
-import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
+export const dynamic = 'force-dynamic';
+
+import { useEffect, useMemo, useState } from 'react';
+import { getSupabase } from '@/lib/supabase';
 
 type Lore = { id: string; title: string; summary: string | null };
 
 export default function PlayerPage() {
+  const supabase = useMemo(() => getSupabase(), []);
   const [items, setItems] = useState<Lore[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!supabase) {
+      setError('Supabase client not available');
+      setLoading(false);
+      return;
+    }
     (async () => {
       const { data, error } = await supabase
         .from('lore')
@@ -19,7 +27,7 @@ export default function PlayerPage() {
       else setItems(data ?? []);
       setLoading(false);
     })();
-  }, []);
+  }, [supabase]);
 
   if (loading) return <main style={{padding:20}}>Loading…</main>;
   if (error)   return <main style={{padding:20, color:'crimson'}}>Error: {error}</main>;
