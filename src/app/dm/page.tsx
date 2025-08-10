@@ -13,6 +13,13 @@ export default function DMPage() {
   const [items, setItems] = useState<Lore[]>([]);
   const [msg, setMsg] = useState<string | null>(null);
 
+  // form state
+  const [title, setTitle] = useState('');
+  const [summary, setSummary] = useState('');
+  const [body, setBody] = useState('');
+  const [visibility, setVisibility] = useState<'public'|'private'>('public');
+  const [saving, setSaving] = useState(false);
+
   useEffect(() => {
     if (!supabase) return;
     supabase.auth.getSession().then(({ data }) => {
@@ -52,9 +59,23 @@ export default function DMPage() {
     if (error) setMsg(`Update failed: ${error.message}`); else refresh();
   }
 
+  async function createLore(e: React.FormEvent) {
+    e.preventDefault();
+    if (!supabase) return;
+    setSaving(true);
+    setMsg(null);
+    if (!title.trim()) { setMsg('Title is required.'); setSaving(false); return; }
+    const { error } = await supabase.from('lore').insert([{ title, summary, body, visibility }]);
+    setSaving(false);
+    if (error) { setMsg(`Create failed: ${error.message}`); return; }
+    setTitle(''); setSummary(''); setBody(''); setVisibility('public');
+    await refresh();
+    setMsg('Lore created.');
+  }
+
   if (!authed) {
     return (
-      <main style={{ padding: 24, maxWidth: 520 }}>
+      <main style={{ padding: 24, maxWidth: 720 }}>
         <h1>DM Login</h1>
         <input
           value={email}
@@ -69,10 +90,47 @@ export default function DMPage() {
   }
 
   return (
-    <main style={{ padding: 24 }}>
+    <main style={{ padding: 24, maxWidth: 900 }}>
       <h1>DM – Lore Admin</h1>
-      {msg && <p style={{ color: 'crimson' }}>{msg}</p>}
-      <button onClick={refresh} style={{ padding: '6px 10px', margin: '8px 0 16px' }}>Refresh</button>
+      {msg && <p style={{ color: msg.startsWith('Error') ? 'crimson' : 'limegreen' }}>{msg}</p>}
+
+      {/* Create form */}
+      <form onSubmit={createLore} style={{ display: 'grid', gap: 8, margin: '16px 0 24px' }}>
+        <input
+          value={title}
+          onChange={e => setTitle(e.target.value)}
+          placeholder="Title *"
+          style={{ padding: 10 }}
+        />
+        <input
+          value={summary}
+          onChange={e => setSummary(e.target.value)}
+          placeholder="Short summary"
+          style={{ padding: 10 }}
+        />
+        <textarea
+          value={body}
+          onChange={e => setBody(e.target.value)}
+          placeholder="Body (full text)"
+          rows={6}
+          style={{ padding: 10 }}
+        />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <label>
+            Visibility:&nbsp;
+            <select value={visibility} onChange={e => setVisibility(e.target.value as 'public'|'private')}>
+              <option value="public">public</option>
+              <option value="private">private</option>
+            </select>
+          </label>
+          <button type="submit" disabled={saving} style={{ padding: '8px 12px' }}>
+            {saving ? 'Saving…' : 'Create'}
+          </button>
+          <button type="button" onClick={refresh} style={{ padding: '8px 12px' }}>Refresh</button>
+        </div>
+      </form>
+
+      {/* List */}
       <ul>
         {items.map(i => (
           <li key={i.id} style={{ margin: '10px 0', display: 'flex', gap: 12, alignItems: 'center' }}>
